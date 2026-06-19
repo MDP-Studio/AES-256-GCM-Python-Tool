@@ -12,6 +12,12 @@ Built to understand authenticated encryption, KDF parameter binding, and defensi
 
 This is not a password manager, enterprise secrets vault, KMS replacement, backup system, or compliance-ready encryption product.
 
+For the line between this educational package and a real vault design, see
+[docs/production-handoff.md](docs/production-handoff.md). It covers key
+ownership, KMS/HSM boundaries, rotation, decrypt-only old keys, nonce policy,
+secret-handling limits, operational controls, and misuse tests that must exist
+outside this package before real secrets are involved.
+
 ## Threat Model
 
 ### What this protects against
@@ -94,7 +100,7 @@ GitHub and PyPI attestations are supply-chain evidence for the packaged files, n
 
 **Python CLI / library:**
 - Python 3.8+
-- `cryptography>=44.0.0` (installed automatically)
+- `cryptography>=48.0.1` (installed automatically)
 
 ## Installation
 

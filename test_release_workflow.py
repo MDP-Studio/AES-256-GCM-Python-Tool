@@ -21,6 +21,15 @@ def test_release_workflow_exists() -> None:
     assert "gh release create" in text
 
 
+def test_production_handoff_doc_is_packaged() -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    handoff = ROOT / "docs" / "production-handoff.md"
+
+    assert handoff.exists()
+    assert "docs/production-handoff.md" in pyproject
+    assert "not a production" in handoff.read_text(encoding="utf-8")
+
+
 def test_release_workflow_attests_artifacts() -> None:
     text = workflow_text()
 
