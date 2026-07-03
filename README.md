@@ -90,6 +90,15 @@ python tools/generate_release_artifacts.py
 
 For tagged releases, follow [docs/release-provenance.md](docs/release-provenance.md). These artifacts improve supply-chain transparency only; they do not make this educational tool production vault software.
 
+Downloaded release artifacts can be checked locally with:
+
+```bash
+python tools/verify_release_artifacts.py release-artifacts/v1.1.0/aes-secure-vault-1.1.0.sha256 --artifact-root .
+```
+
+The verifier checks the SHA-256 manifest and rejects unsafe manifest paths. It
+does not replace GitHub or PyPI attestation verification.
+
 The GitHub Actions release workflow builds and tests tagged releases, uploads distribution and transparency files to the matching GitHub release, and creates GitHub artifact attestations. PyPI upload is gated behind a manual `workflow_dispatch` run from a `v*` tag and requires the GitHub `pypi` environment plus a matching PyPI Trusted Publisher. The workflow uses tokenless Trusted Publishing only; no long-lived PyPI API token is expected.
 
 GitHub and PyPI attestations are supply-chain evidence for the packaged files, not production cryptography certification.

@@ -127,8 +127,19 @@ After downloading a release artifact set:
 sha256sum -c aes-secure-vault-1.1.0.sha256
 ```
 
+Or use the repository verifier from a checkout:
+
+```bash
+python tools/verify_release_artifacts.py release-artifacts/v1.1.0/aes-secure-vault-1.1.0.sha256 --artifact-root .
+```
+
 On Windows PowerShell, verify a single file with:
 
 ```powershell
 Get-FileHash .\aes-secure-vault-1.1.0.sbom.cdx.json -Algorithm SHA256
 ```
+
+The verifier checks each SHA-256 entry, reports missing or modified files, and
+rejects manifest paths that try to escape the selected artifact root. It does
+not verify GitHub artifact attestations or PyPI digital attestations; use the
+platform tooling for those checks.

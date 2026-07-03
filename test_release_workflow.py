@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import tempfile
+
+from tools.verify_release_artifacts import verify_manifest
 
 
 ROOT = Path(__file__).resolve().parent
@@ -61,3 +65,34 @@ def test_pypi_publish_requires_manual_tagged_run() -> None:
     assert "github.event_name == 'workflow_dispatch' && inputs.publish_to_pypi == true" in text
     assert 'if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then' in text
     assert "PyPI publishing is allowed only from a v* tag" in text
+
+
+def test_release_verifier_accepts_matching_manifest() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        artifact = root / "release-artifacts" / "v1.1.0" / "sample.txt"
+        artifact.parent.mkdir(parents=True)
+        artifact.write_text("release payload\n", encoding="utf-8")
+        digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        manifest = root / "manifest.sha256"
+        manifest.write_text(f"{digest}  release-artifacts/v1.1.0/sample.txt\n", encoding="utf-8")
+
+        assert verify_manifest(manifest, root) == []
+
+
+def test_release_verifier_rejects_tamper_and_path_escape() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        artifact = root / "sample.txt"
+        artifact.write_text("tampered\n", encoding="utf-8")
+        manifest = root / "manifest.sha256"
+        manifest.write_text(
+            "0" * 64 + "  sample.txt\n" +
+            "1" * 64 + "  ../outside.txt\n",
+            encoding="utf-8",
+        )
+
+        failures = verify_manifest(manifest, root)
+
+    assert any("sha256 mismatch" in failure for failure in failures)
+    assert any("path escapes artifact root" in failure for failure in failures)

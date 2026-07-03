@@ -55,6 +55,7 @@ include = [
     "index.html",
     "tools/benchmark_memory_profile.py",
     "tools/generate_release_artifacts.py",
+    "tools/verify_release_artifacts.py",
     "docs/production-handoff.md",
     "docs/release-provenance.md",
     "README.md",
