@@ -45,6 +45,20 @@ def test_production_handoff_doc_is_packaged() -> None:
     assert "not a production" in handoff.read_text(encoding="utf-8")
 
 
+def test_public_security_policy_is_discoverable_and_packaged() -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    policy = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+
+    assert "SECURITY.md" in pyproject
+    assert "Security =" in pyproject
+    assert "[security policy](SECURITY.md)" in readme
+    assert "/security/advisories/new" in policy
+    assert "python tools/verify_published_release.py --tag v1.1.1" in policy
+    assert "production vault" in policy
+    assert "independently certified" in policy
+
+
 def test_release_workflow_attests_artifacts() -> None:
     text = workflow_text()
 

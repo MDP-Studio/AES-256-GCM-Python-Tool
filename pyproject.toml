@@ -42,6 +42,7 @@ secure-vault = "secure_vault:main"
 [project.urls]
 Repository = "https://github.com/MDP-Studio/AES-256-GCM-Python-Tool"
 ReleaseProvenance = "https://github.com/MDP-Studio/AES-256-GCM-Python-Tool/releases"
+Security = "https://github.com/MDP-Studio/AES-256-GCM-Python-Tool/security/policy"
 
 [tool.hatch.build.targets.wheel]
 only-include = ["secure_vault.py", "py.typed"]
@@ -61,6 +62,7 @@ include = [
     "docs/production-handoff.md",
     "docs/release-provenance.md",
     "README.md",
+    "SECURITY.md",
     "requirements.txt",
     "requirements-dev.txt",
     "LICENSE",

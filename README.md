@@ -18,6 +18,10 @@ ownership, KMS/HSM boundaries, rotation, decrypt-only old keys, nonce policy,
 secret-handling limits, operational controls, and misuse tests that must exist
 outside this package before real secrets are involved.
 
+Security vulnerabilities should be reported privately through the
+[security policy](SECURITY.md). Do not put real secrets or exploit details in a
+public issue.
+
 ## Threat Model
 
 ### What this protects against
@@ -120,6 +124,9 @@ the machine-readable result. CI never uses that exception.
 The GitHub Actions release workflow builds and tests tagged releases, uploads distribution and transparency files to the matching GitHub release, creates GitHub artifact attestations, then downloads and verifies the published assets. PyPI upload is gated behind a manual `workflow_dispatch` run from a `v*` tag and requires the GitHub `pypi` environment plus a matching PyPI Trusted Publisher. The workflow uses tokenless Trusted Publishing only; no long-lived PyPI API token is expected.
 
 GitHub and PyPI attestations are supply-chain evidence for the packaged files, not production cryptography certification.
+
+Supported release channels, private reporting, scope, and current limitations
+are documented in [SECURITY.md](SECURITY.md).
 
 ## Requirements
 

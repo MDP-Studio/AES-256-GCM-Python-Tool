@@ -4,6 +4,8 @@
 
 - Move GitHub checkout, Python setup, and artifact transfer actions to their
   Node 24-compatible major versions for future release and verification runs.
+- Add a public security policy covering supported channels, private reporting,
+  scope, release verification, educational boundaries, and current limitations.
 
 ## 1.1.1 - 2026-07-13
 
