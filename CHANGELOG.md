@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Move GitHub checkout, Python setup, and artifact transfer actions to their
+  Node 24-compatible major versions for future release and verification runs.
+
 ## 1.1.1 - 2026-07-13
 
 - Correct the public checksum manifest to cover the flat GitHub release assets.
