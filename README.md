@@ -80,6 +80,21 @@ The benchmark reports Python allocation peaks for single-shot versus streaming m
 
 New single-shot payloads are written as v2.0. v1.0 payloads can be decrypted without any migration step. Streaming payloads are separate `stream-1.0` line-delimited JSON files and are intentionally not interchangeable with the browser UI or single-shot JSON blobs.
 
+## What's New in 1.1.1
+
+- Published release checksums now name the flat files users actually download,
+  instead of source-checkout paths that cannot be reconstructed from a release.
+- The release workflow downloads its own published assets and fails if an asset,
+  GitHub digest, checksum, tag/commit binding, or artifact attestation is absent
+  or mismatched.
+- A weekly and manual CI check re-verifies the latest published GitHub release.
+- The verifier has an injected offline seam used by the test suite, so tests do
+  not depend on GitHub availability.
+
+Version 1.1.0 predates the complete published-artifact ceremony and does not
+contain every file named by its checksum manifest. Use 1.1.1 or newer when
+reviewing release provenance.
+
 ## Release Provenance and SBOM
 
 Release builds can publish three review artifacts: a CycloneDX SBOM, a SHA-256 checksum manifest, and an unsigned local provenance statement tied to the git commit and tag. Generate them with:
@@ -90,16 +105,19 @@ python tools/generate_release_artifacts.py
 
 For tagged releases, follow [docs/release-provenance.md](docs/release-provenance.md). These artifacts improve supply-chain transparency only; they do not make this educational tool production vault software.
 
-Downloaded release artifacts can be checked locally with:
+Verify the actual files published on GitHub, including GitHub asset digests,
+the SHA-256 manifest, the tag/commit binding, and GitHub attestations, with:
 
 ```bash
-python tools/verify_release_artifacts.py release-artifacts/v1.1.0/aes-secure-vault-1.1.0.sha256 --artifact-root .
+python tools/verify_published_release.py --tag v1.1.1
 ```
 
-The verifier checks the SHA-256 manifest and rejects unsafe manifest paths. It
-does not replace GitHub or PyPI attestation verification.
+The command requires GitHub CLI (`gh`) and fails explicitly when published
+evidence is absent or mismatched. For an intentional legacy/offline review,
+`--skip-attestations` is available and is recorded as `explicitly-skipped` in
+the machine-readable result. CI never uses that exception.
 
-The GitHub Actions release workflow builds and tests tagged releases, uploads distribution and transparency files to the matching GitHub release, and creates GitHub artifact attestations. PyPI upload is gated behind a manual `workflow_dispatch` run from a `v*` tag and requires the GitHub `pypi` environment plus a matching PyPI Trusted Publisher. The workflow uses tokenless Trusted Publishing only; no long-lived PyPI API token is expected.
+The GitHub Actions release workflow builds and tests tagged releases, uploads distribution and transparency files to the matching GitHub release, creates GitHub artifact attestations, then downloads and verifies the published assets. PyPI upload is gated behind a manual `workflow_dispatch` run from a `v*` tag and requires the GitHub `pypi` environment plus a matching PyPI Trusted Publisher. The workflow uses tokenless Trusted Publishing only; no long-lived PyPI API token is expected.
 
 GitHub and PyPI attestations are supply-chain evidence for the packaged files, not production cryptography certification.
 

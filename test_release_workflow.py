@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 import hashlib
+import json
 import tempfile
 
+import pytest
+
+from tools.generate_release_artifacts import build_public_checksum_lines
+from tools.verify_published_release import (
+    ReleaseVerificationError,
+    expected_release_assets,
+    verify_published_release,
+)
 from tools.verify_release_artifacts import verify_manifest
 
 
@@ -23,6 +32,8 @@ def test_release_workflow_exists() -> None:
     assert "tools/generate_release_artifacts.py --require-tag --require-clean" in text
     assert "gh release upload" in text
     assert "gh release create" in text
+    assert "tools/verify_published_release.py" in text
+    assert "--expected-commit \"${GITHUB_SHA}\"" in text
 
 
 def test_production_handoff_doc_is_packaged() -> None:
@@ -43,6 +54,17 @@ def test_release_workflow_attests_artifacts() -> None:
     assert "subject-path:" in text
     assert "${{ github.workspace }}/dist/*" in text
     assert "release-artifacts/${{ steps.release-id.outputs.release_id }}/*" in text
+
+
+def test_scheduled_workflow_verifies_latest_published_release() -> None:
+    text = (ROOT / ".github" / "workflows" / "verify-published-release.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "schedule:" in text
+    assert "gh release view" in text
+    assert "tools/verify_published_release.py" in text
+    assert "--skip-attestations" not in text
 
 
 def test_pypi_publish_is_trusted_publishing_only() -> None:
@@ -96,3 +118,105 @@ def test_release_verifier_rejects_tamper_and_path_escape() -> None:
 
     assert any("sha256 mismatch" in failure for failure in failures)
     assert any("path escapes artifact root" in failure for failure in failures)
+
+
+def _published_release_fixture(root: Path) -> tuple[dict[str, object], str, str]:
+    tag = "v1.1.1"
+    commit = "a" * 40
+    names = expected_release_assets(tag)
+    payloads = {
+        names[0]: b"wheel payload\n",
+        names[1]: b"source payload\n",
+        names[2]: b'{"bomFormat":"CycloneDX"}\n',
+    }
+    provenance = {
+        "subject": {
+            "name": "aes-secure-vault",
+            "version": "1.1.1",
+            "releaseId": tag,
+            "git": {"commit": commit, "tag": tag, "dirty": False},
+        }
+    }
+    payloads[names[3]] = (json.dumps(provenance) + "\n").encode("utf-8")
+    for name, content in payloads.items():
+        (root / name).write_bytes(content)
+    checksum_lines = [
+        f"{hashlib.sha256((root / name).read_bytes()).hexdigest()}  {name}" for name in names[:-1]
+    ]
+    (root / names[-1]).write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
+    assets = []
+    for name in names:
+        path = root / name
+        assets.append(
+            {
+                "name": name,
+                "size": path.stat().st_size,
+                "digest": f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}",
+            }
+        )
+    return {
+        "tagName": tag,
+        "isDraft": False,
+        "url": "https://github.example/releases/v1.1.1",
+        "assets": assets,
+    }, tag, commit
+
+
+def test_public_checksum_manifest_uses_flat_release_names() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        first = root / "dist" / "package.whl"
+        second = root / "release-artifacts" / "v1" / "sbom.json"
+        first.parent.mkdir(parents=True)
+        second.parent.mkdir(parents=True)
+        first.write_bytes(b"wheel")
+        second.write_bytes(b"sbom")
+
+        lines = build_public_checksum_lines([second, first])
+
+    assert lines[0].endswith("  package.whl")
+    assert lines[1].endswith("  sbom.json")
+    assert all("dist/" not in line and "release-artifacts/" not in line for line in lines)
+
+
+def test_published_release_verifier_accepts_offline_fixture_and_injected_attestations() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        metadata, tag, commit = _published_release_fixture(root)
+        checked: list[str] = []
+
+        report = verify_published_release(
+            metadata,
+            root,
+            tag,
+            commit,
+            lambda path: checked.append(path.name),
+        )
+
+    assert report["checks"]["checksumManifest"] == "verified"
+    assert report["checks"]["githubAttestations"] == "verified"
+    assert checked == list(expected_release_assets(tag))
+
+
+def test_published_release_verifier_fails_on_missing_or_tampered_evidence() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        metadata, tag, commit = _published_release_fixture(root)
+        metadata["assets"] = metadata["assets"][:-1]
+        with pytest.raises(ReleaseVerificationError, match="missing required asset metadata"):
+            verify_published_release(metadata, root, tag, commit, lambda path: None)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        metadata, tag, commit = _published_release_fixture(root)
+        (root / expected_release_assets(tag)[0]).write_bytes(b"tampered")
+        with pytest.raises(ReleaseVerificationError, match="size does not match|digest mismatch"):
+            verify_published_release(metadata, root, tag, commit, lambda path: None)
+
+
+def test_published_release_verifier_requires_attestation_evidence() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        metadata, tag, commit = _published_release_fixture(root)
+        with pytest.raises(ReleaseVerificationError, match="attestation evidence is required"):
+            verify_published_release(metadata, root, tag, commit, None)

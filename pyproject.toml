@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aes-secure-vault"
-version = "1.1.0"
+version = "1.1.1"
 description = "AES-256-GCM educational encryption tool with Argon2id key derivation and safe-mode streaming."
 readme = "README.md"
 license = "MIT"
@@ -56,6 +56,8 @@ include = [
     "tools/benchmark_memory_profile.py",
     "tools/generate_release_artifacts.py",
     "tools/verify_release_artifacts.py",
+    "tools/verify_published_release.py",
+    "CHANGELOG.md",
     "docs/production-handoff.md",
     "docs/release-provenance.md",
     "README.md",

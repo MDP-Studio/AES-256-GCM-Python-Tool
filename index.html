@@ -102,6 +102,34 @@
       line-height: 1.45;
     }
 
+    .release-trust {
+      padding: 18px 32px;
+      border-bottom: 1px solid #e8eaed;
+      background: #f5f3ff;
+    }
+    .release-trust h2 {
+      color: #312e81;
+      font-size: 0.95rem;
+      margin-bottom: 7px;
+    }
+    .release-trust p {
+      color: #4c4b63;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+    .release-trust code {
+      display: block;
+      overflow-wrap: anywhere;
+      border: 1px solid #ddd6fe;
+      border-radius: 7px;
+      background: #fff;
+      color: #312e81;
+      padding: 9px 10px;
+      font: 0.72rem/1.45 "SF Mono", "Fira Code", Consolas, monospace;
+    }
+    .release-trust a { color: #4338ca; }
+
     /* ── Tabs ── */
     .tabs {
       display: flex;
@@ -312,6 +340,16 @@
       <div><strong>Interop</strong><span>Browser encrypted blobs are compatible with the Python CLI and library, so the same payload format can be reviewed both ways.</span></div>
       <div><strong>Limits</strong><span>Passphrase strength, memory scraping, side channels, and key rotation remain outside the tool boundary.</span></div>
     </div>
+  </section>
+
+  <section class="release-trust" aria-labelledby="release-trust-title">
+    <h2 id="release-trust-title">Verify the published package before installing</h2>
+    <p>
+      Release 1.1.1 adds a fail-closed check for GitHub asset digests, the
+      SHA-256 manifest, tag-bound provenance, and GitHub attestations.
+      <a href="https://github.com/MDP-Studio/AES-256-GCM-Python-Tool/releases">Review release assets</a>.
+    </p>
+    <code>python tools/verify_published_release.py --tag v1.1.1</code>
   </section>
 
   <!-- Tabs -->

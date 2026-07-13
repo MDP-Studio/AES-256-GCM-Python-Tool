@@ -112,8 +112,28 @@ def posix_relative(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 
 
-def collect_subjects(extra_files: list[Path]) -> list[dict[str, object]]:
-    dist_files = sorted((ROOT / "dist").glob("*")) if (ROOT / "dist").exists() else []
+def expected_distribution_files(metadata: dict[str, str]) -> list[Path]:
+    dist_dir = ROOT / "dist"
+    normalized_name = metadata["name"].replace("-", "_")
+    expected = [
+        dist_dir / f"{normalized_name}-{metadata['version']}-py3-none-any.whl",
+        dist_dir / f"{normalized_name}-{metadata['version']}.tar.gz",
+    ]
+    missing = [path.name for path in expected if not path.is_file()]
+    if missing:
+        raise RuntimeError("release distributions are missing: " + ", ".join(missing))
+    unexpected = sorted(
+        path.name for path in dist_dir.iterdir() if path.is_file() and path not in expected
+    )
+    if unexpected:
+        raise RuntimeError(
+            "dist contains stale or unexpected release files; clean it before building: "
+            + ", ".join(unexpected)
+        )
+    return expected
+
+
+def collect_subjects(extra_files: list[Path], dist_files: list[Path]) -> list[dict[str, object]]:
     files = [
         ROOT / "pyproject.toml",
         ROOT / "requirements.txt",
@@ -140,6 +160,21 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def build_public_checksum_lines(paths: list[Path]) -> list[str]:
+    """Build the checksum manifest exactly as GitHub Releases publishes it.
+
+    GitHub flattens the files from ``dist/`` and ``release-artifacts/<tag>/``
+    into one release asset list. Keeping only basenames here lets a reviewer
+    download the public assets into one directory and verify every entry. A
+    duplicate basename would make that public layout ambiguous, so fail closed.
+    """
+
+    names = [path.name for path in paths]
+    if len(names) != len(set(names)):
+        raise RuntimeError("release assets contain duplicate basenames")
+    return [f"{sha256(path)}  {path.name}" for path in sorted(paths, key=lambda item: item.name)]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--require-tag", action="store_true", help="fail unless HEAD is exactly tagged")
@@ -151,6 +186,7 @@ def main() -> int:
     args = parser.parse_args()
 
     metadata = read_project_metadata()
+    dist_files = expected_distribution_files(metadata)
     commit = run_git(["rev-parse", "HEAD"], "unknown")
     short_commit = run_git(["rev-parse", "--short", "HEAD"], "unknown")
     branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"], "unknown")
@@ -160,6 +196,12 @@ def main() -> int:
 
     if args.require_tag and not tag:
         print("release artifacts require HEAD to match a git tag", file=sys.stderr)
+        return 1
+    if tag and tag != f"v{metadata['version']}":
+        print(
+            f"release tag {tag} does not match project version v{metadata['version']}",
+            file=sys.stderr,
+        )
         return 1
     if (args.require_clean or args.require_tag) and dirty:
         print("release artifacts require a clean worktree", file=sys.stderr)
@@ -208,7 +250,7 @@ def main() -> int:
     write_json(sbom_path, sbom)
 
     provenance_path = out_dir / f"{metadata['name']}-{metadata['version']}.provenance.local.json"
-    subjects = collect_subjects([sbom_path])
+    subjects = collect_subjects([sbom_path], dist_files)
     provenance = {
         "predicateType": "https://mdpstudio.com.au/provenance/local-build/v1",
         "generatedAt": generated_at,
@@ -249,13 +291,17 @@ def main() -> int:
     }
     write_json(provenance_path, provenance)
 
-    checksum_targets = sorted(
-        [ROOT / item["path"] for item in subjects] + [provenance_path],
-        key=lambda item: item.relative_to(ROOT).as_posix(),
-    )
+    # This manifest is a verifier for the files users can actually download
+    # from the matching GitHub release. Source-file hashes remain available in
+    # the provenance statement, but are not presented as downloadable assets.
+    checksum_targets = [
+        *dist_files,
+        sbom_path,
+        provenance_path,
+    ]
     checksum_path = out_dir / f"{metadata['name']}-{metadata['version']}.sha256"
     checksum_path.write_text(
-        "\n".join(f"{sha256(path)}  {posix_relative(path)}" for path in checksum_targets) + "\n",
+        "\n".join(build_public_checksum_lines(checksum_targets)) + "\n",
         encoding="utf-8",
     )
 

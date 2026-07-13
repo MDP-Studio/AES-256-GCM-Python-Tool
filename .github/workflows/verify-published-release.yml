@@ -1,0 +1,61 @@
+name: Verify Published Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published v* tag to verify. Leave blank to verify the latest release."
+        required: false
+        type: string
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  attestations: read
+  contents: read
+
+jobs:
+  verify:
+    name: Download and verify published assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout verifier
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Resolve release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          tag="${REQUESTED_TAG}"
+          if [[ -z "${tag}" ]]; then
+            tag="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)"
+          fi
+          if [[ "${tag}" != v* ]]; then
+            echo "::error::Published release tag must start with v; got '${tag}'."
+            exit 1
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Verify published checksums and attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python tools/verify_published_release.py \
+            --repository "${GITHUB_REPOSITORY}" \
+            --tag "${{ steps.release.outputs.tag }}" \
+            --report published-release-verification.json
+
+      - name: Upload verification result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-release-verification-${{ steps.release.outputs.tag }}
+          path: published-release-verification.json
+          if-no-files-found: warn

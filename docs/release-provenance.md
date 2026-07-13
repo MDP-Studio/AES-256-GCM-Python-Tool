@@ -22,9 +22,11 @@ Run from a clean checkout:
 
 ```bash
 python -m pip install -r requirements-dev.txt
-python -m pytest test_secure_vault.py -v
+python -m pytest test_secure_vault.py test_release_workflow.py -v
+Remove-Item -LiteralPath .\dist -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath .\release-artifacts -Recurse -Force -ErrorAction SilentlyContinue
 python -m build
-git tag v1.1.0
+git tag v1.1.1
 python tools/generate_release_artifacts.py --require-tag --require-clean
 ```
 
@@ -40,9 +42,9 @@ release-artifacts/<tag-or-version-commit>/
 Expected files:
 
 ```text
-aes-secure-vault-1.1.0.sbom.cdx.json
-aes-secure-vault-1.1.0.provenance.local.json
-aes-secure-vault-1.1.0.sha256
+aes-secure-vault-1.1.1.sbom.cdx.json
+aes-secure-vault-1.1.1.provenance.local.json
+aes-secure-vault-1.1.1.sha256
 ```
 
 ## GitHub and PyPI Release Upload
@@ -73,6 +75,14 @@ On a `v*.*.*` tag push it:
 4. Creates GitHub artifact attestations for the distribution and transparency
    files.
 5. Creates or updates the matching GitHub release and uploads the artifacts.
+6. Downloads the assets from that published release and verifies GitHub asset
+   digests, the flat checksum manifest, provenance tag/commit binding, and every
+   GitHub artifact attestation.
+
+The separate `.github/workflows/verify-published-release.yml` workflow repeats
+that public verification weekly and on manual request. It fails closed when an
+expected distribution, SBOM, provenance statement, checksum, digest, or
+attestation is absent.
 
 The workflow keeps build and publish duties separate. The PyPI job has only
 `id-token: write` and downloads already-built artifacts instead of rebuilding
@@ -123,23 +133,32 @@ transparency controls. They are not:
 
 After downloading a release artifact set:
 
-```bash
-sha256sum -c aes-secure-vault-1.1.0.sha256
+```powershell
+sha256sum -c aes-secure-vault-1.1.1.sha256
 ```
 
 Or use the repository verifier from a checkout:
 
 ```bash
-python tools/verify_release_artifacts.py release-artifacts/v1.1.0/aes-secure-vault-1.1.0.sha256 --artifact-root .
+python tools/verify_published_release.py --tag v1.1.1
 ```
 
 On Windows PowerShell, verify a single file with:
 
 ```powershell
-Get-FileHash .\aes-secure-vault-1.1.0.sbom.cdx.json -Algorithm SHA256
+Get-FileHash .\aes-secure-vault-1.1.1.sbom.cdx.json -Algorithm SHA256
 ```
 
-The verifier checks each SHA-256 entry, reports missing or modified files, and
-rejects manifest paths that try to escape the selected artifact root. It does
-not verify GitHub artifact attestations or PyPI digital attestations; use the
-platform tooling for those checks.
+The published-release verifier downloads the matching GitHub release, checks
+GitHub's release-asset digests, verifies every flat SHA-256 manifest entry,
+binds local provenance to the tag commit, and uses `gh attestation verify` with
+the repository, signer workflow, source ref, and source commit constrained.
+
+For fixture-based or disconnected testing, provide `--metadata-file`,
+`--asset-root`, `--expected-commit`, and the explicit `--skip-attestations`
+exception. The test suite uses the verifier's injected attestation callback and
+does not contact GitHub. Never use the exception in the release or scheduled CI
+workflows.
+
+Version 1.1.0 is a legacy transparency release. Its checksum manifest names
+files that were not all uploaded, so the new verifier correctly rejects it.
