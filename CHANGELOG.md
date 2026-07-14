@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Preserve leading and trailing whitespace in browser-encrypted plaintext.
+- Derive package metadata from the runtime version constant so release and
+  runtime versions cannot drift.
+- Add bidirectional browser/Python interoperability checks, accessibility
+  regressions, pull-request CI, and a verified GitHub Pages deployment lane.
+
+## Unreleased
+
 - Move GitHub checkout, Python setup, and artifact transfer actions to their
   Node 24-compatible major versions for future release and verification runs.
 - Add a public security policy covering supported channels, private reporting,

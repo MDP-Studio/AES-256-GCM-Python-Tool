@@ -45,6 +45,7 @@ def sha256(path: Path) -> str:
 
 def read_project_metadata() -> dict[str, str]:
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    runtime = (ROOT / "secure_vault.py").read_text(encoding="utf-8")
     project_block = re.search(r"(?ms)^\[project\]\s*(.*?)(?:^\[|\Z)", pyproject)
     if not project_block:
         raise RuntimeError("pyproject.toml is missing a [project] section")
@@ -55,10 +56,11 @@ def read_project_metadata() -> dict[str, str]:
             raise RuntimeError(f"pyproject.toml [project] is missing {key}")
         return match.group(1)
 
-    return {
-        "name": get_string("name"),
-        "version": get_string("version"),
-    }
+    version_match = re.search(r'(?m)^__version__\s*=\s*"([^"]+)"', runtime)
+    if not version_match:
+        raise RuntimeError("secure_vault.py is missing __version__")
+
+    return {"name": get_string("name"), "version": version_match.group(1)}
 
 
 def parse_requirement(line: str) -> tuple[str, str] | None:

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aes-secure-vault"
-version = "1.1.1"
+dynamic = ["version"]
 description = "AES-256-GCM educational encryption tool with Argon2id key derivation and safe-mode streaming."
 readme = "README.md"
 license = "MIT"
@@ -47,12 +47,17 @@ Security = "https://github.com/MDP-Studio/AES-256-GCM-Python-Tool/security/polic
 [tool.hatch.build.targets.wheel]
 only-include = ["secure_vault.py", "py.typed"]
 
+[tool.hatch.version]
+path = "secure_vault.py"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "secure_vault.py",
     "py.typed",
     "test_secure_vault.py",
     "test_release_workflow.py",
+    "test_web_ui.py",
+    "tests/web_interop.mjs",
     "index.html",
     "tools/benchmark_memory_profile.py",
     "tools/generate_release_artifacts.py",

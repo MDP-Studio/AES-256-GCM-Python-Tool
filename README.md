@@ -157,6 +157,9 @@ pip install -r requirements-dev.txt
 
 ## Web UI
 
+The browser UI is published at
+[mdp-studio.github.io/AES-256-GCM-Python-Tool](https://mdp-studio.github.io/AES-256-GCM-Python-Tool/).
+
 The recommended way to open it:
 
 ```bash
@@ -255,14 +258,19 @@ The encrypted blob is a JSON string safe to store or transmit:
 ## Tests
 
 ```bash
-# Full suite (includes Hypothesis fuzz tests — may take a few minutes)
-pytest test_secure_vault.py test_release_workflow.py -v
+# Full suite (includes Hypothesis fuzz tests and browser/Python interoperability)
+pytest test_secure_vault.py test_release_workflow.py test_web_ui.py -v
 
 # Skip slow fuzz tests
 pytest test_secure_vault.py -v -k "not arbitrary"
 ```
 
 Coverage includes: roundtrip correctness, non-determinism verification, authentication/integrity failures, KDF boundary enforcement, type evasion guards, malformed payload rejection, OOM limits, MemoryError path, legacy v1.0 decryption, and property-based fuzzing with Hypothesis.
+
+`test_web_ui.py` requires Node.js and exercises both interoperability directions
+using Node's browser-compatible WebCrypto implementation. It also guards the
+programmatic labels, tab semantics, keyboard behavior, visible focus, live
+status regions, and reduced-motion contract used by the static browser UI.
 
 Streaming coverage includes safe-mode roundtrip, bounded read-size profiling, compatibility tag enforcement, single-shot/stream format misuse, tampered chunk sequence rejection, and wrong-passphrase failure.
 
