@@ -7,6 +7,8 @@
   runtime versions cannot drift.
 - Add bidirectional browser/Python interoperability checks, accessibility
   regressions, pull-request CI, and a verified GitHub Pages deployment lane.
+- Align the declared Python minimum with cryptography 48 by requiring Python
+  3.9 or newer.
 
 ## Unreleased
 

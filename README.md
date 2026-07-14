@@ -133,7 +133,7 @@ are documented in [SECURITY.md](SECURITY.md).
 **Web UI:** A modern browser. No install.
 
 **Python CLI / library:**
-- Python 3.8+
+- Python 3.9+
 - `cryptography>=48.0.1` (installed automatically)
 
 ## Installation
